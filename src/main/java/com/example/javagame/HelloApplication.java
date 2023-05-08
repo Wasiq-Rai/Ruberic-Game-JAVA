@@ -1,15 +1,18 @@
-package com.example.javagame;
+package  com.example.javagame;
 import javafx.animation.AnimationTimer;
+import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Circle;
+import javafx.scene.shape.Sphere;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
-import javafx.scene.control.Alert;
+import javafx.util.Duration;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,7 +21,7 @@ import java.util.Random;
 
 public class HelloApplication extends Application {
 
-    private static final int NUM_OBJECTS = 30;
+    private static final int NUM_OBJECTS = 3;
     private static final double WIDTH = 1000;
     private static final double HEIGHT = 650;
 
@@ -26,6 +29,7 @@ public class HelloApplication extends Application {
     private int objectsClicked = 0;
     private Text scoreText;
     private List<FallingObject> objects;
+    private List<Text> texts;
     private Random random;
 
     public static void main(String[] args) {
@@ -37,11 +41,10 @@ public class HelloApplication extends Application {
         Pane root = new Pane();
         Scene scene = new Scene(root, WIDTH, HEIGHT);
 
-        scoreText = new Text("Score: 0");
+        scoreText = new Text("Score: "+score);
         scoreText.setLayoutX(10);
         scoreText.setLayoutY(20);
         root.getChildren().add(scoreText);
-
         Text valuesText = new Text("Object Values:\n\n"
                 + "Yellow: 3\n"
                 + "Green: 2\n"
@@ -50,8 +53,8 @@ public class HelloApplication extends Application {
         valuesText.setLayoutX(WIDTH - 150);
         valuesText.setLayoutY(20);
         root.getChildren().add(valuesText);
-
         objects = new ArrayList<>();
+        texts = new ArrayList<>();
         random = new Random();
 
         AnimationTimer gameLoop = new AnimationTimer() {
@@ -59,22 +62,14 @@ public class HelloApplication extends Application {
             public void handle(long now) {
                 if (objectsClicked < NUM_OBJECTS) {
                     spawnObjects(root);
-                    updateObjects();
+                    updateObjects(root);
+                }
+                else {
+                    stop();
                 }
             }
         };
 
-        scene.setOnMouseClicked(event -> {
-            for (FallingObject object : objects) {
-                if (object.contains(event.getX(), event.getY())) {
-                    score += object.getValue();
-                    scoreText.setText("Score: " + score);
-                    objectsClicked++;
-                    root.getChildren().remove(object);
-                    break;
-                }
-            }
-        });
 
         primaryStage.setTitle("Speed Click Game");
         primaryStage.setScene(scene);
@@ -83,80 +78,117 @@ public class HelloApplication extends Application {
         gameLoop.start();
     }
 
-
     private void spawnObjects(Pane root) {
         if (random.nextDouble() < 0.01 * (1 + objectsClicked)) {
             double radius = 10 + random.nextDouble() * 20;
             double x = radius + random.nextDouble() * (WIDTH - 2 * radius);
             double speed = 1 + 0.5 * objectsClicked;
+            double z = 2;
             int value = 1 + random.nextInt(4);
 
-            Color color = switch (value) {
-                case 1 -> Color.BLUE;
-                case 2 -> Color.GREEN;
-                case 3 -> Color.YELLOW;
-                case 4 -> Color.RED;
-                default -> Color.BLACK;
-            };
+            PhongMaterial material = new PhongMaterial();
+            switch (value) {
+                case 1 -> {
+                    material.setDiffuseColor(Color.BLUE);
+                    material.setSpecularColor(Color.BLUE);
+                }
+                case 2 -> {
+                    material.setDiffuseColor(Color.GREEN);
+                    material.setSpecularColor(Color.GREEN);
+                }
+                case 3 -> {
+                    material.setDiffuseColor(Color.YELLOW);
+                    material.setSpecularColor(Color.YELLOW);
+                }
+                case 4 -> {
+                    material.setDiffuseColor(Color.RED);
+                    material.setSpecularColor(Color.RED);
+                }
+                default -> {
+                    material.setDiffuseColor(Color.BLACK);
+                    material.setSpecularColor(Color.BLACK);
+                }
+            }
 
-            FallingObject object = new FallingObject(x, 0, radius, color, value, speed);
+            FallingObject object = new FallingObject(x, 0, z, radius, value, speed);
+            object.setMaterial(material);
+
+            object.setOnMouseClicked(event -> handleClick((FallingObject) event.getTarget(), root));
+
+            Text text = new Text();
+            text.setText(getTextByValue(value));
+            text.setFill(Color.WHITE);
+            text.setFont(Font.font(12));
+            text.setTranslateX(x); // set x offset
+            text.setTranslateY(object.getTranslateY());// set y offset
+
             objects.add(object);
-
-            // Create text to display object value on the object
-            Text valueText = new Text(String.valueOf(value));
-            valueText.setFill(Color.WHITE);
-            valueText.setFont(new Font(18));
-            valueText.setX(x - radius / 2);
-            valueText.setY(radius / 2);
-
-            Circle objectShape = object;
-            objectShape.setMaterial(object.getMaterial());
-            objectShape.getChildren().add(valueText);
-            root.getChildren().add(objectShape);
+            texts.add(text);
+            root.getChildren().add(object);
+            root.getChildren().add(text);
         }
     }
 
-    private void updateObjects() {
-        Iterator<FallingObject> iterator = objects.iterator();
-        while (iterator.hasNext()) {
-            FallingObject object = iterator.next();
-            object.setCenterY(object.getCenterY() + object.getSpeed());
+    private String getTextByValue(int value) {
+        switch (value) {
+            case 1:
+                return "1";
+            case 2:
+                return "2";
+            case 3:
+                return "3";
+            case 4:
+                return "4";
+            default:
+                return "";
+        }
+    }
 
-            if (object.getCenterY() - object.getRadius() > HEIGHT) {
-                iterator.remove();
+
+
+
+    private void handleClick(FallingObject target,Pane root) {
+        Iterator<FallingObject> it = objects.iterator();
+        Iterator<Text> text = texts.iterator();
+
+        while (it.hasNext()) {
+            FallingObject object = it.next();
+            Text number = text.next();
+            if (object == target) {
+                score += object.getValue();
+                scoreText.setText("Score: " + score);
+                objectsClicked++;
                 root.getChildren().remove(object);
-            }
-            else {
-                Circle objectShape = object.getShape();
-                PhongMaterial material = new PhongMaterial(objectShape.getFill());
-                objectShape.setMaterial(material);
-                objectShape.setTranslateZ(-1 * object.getRadius());
+                root.getChildren().remove(number);
+                text.remove();
+                it.remove();
+                break;
             }
         }
     }
 
 
+    private void updateObjects(Pane root) {
+        Iterator<FallingObject> it = objects.iterator();
+        Iterator<Text> text = texts.iterator();
+        while (it.hasNext()) {
+            FallingObject node = it.next();
+            Text number = text.next();
 
-    private void updateObjects() {
-        Iterator<FallingObject> iterator = objects.iterator();
-        while (iterator.hasNext()) {
-            FallingObject object = iterator.next();
-            object.setCenterY(object.getCenterY() + object.getSpeed());
 
-            if (object.getCenterY() - object.getRadius() > HEIGHT) {
-                iterator.remove();
-            }
-        }
+                node.setTranslateY(node.getTranslateY() + (1 + 0.5 * objectsClicked));
+                number.setTranslateY(node.getTranslateY());
+                if (node.getTranslateY() - node.getRadius() > HEIGHT) {
+                    // remove the text node from root Pane
+                    text.remove();
+                    it.remove();
+                    root.getChildren().remove(number);
+                    root.getChildren().remove(node);
+                }
 
-        if (objectsClicked == NUM_OBJECTS) {
-            endGame();
         }
     }
-    private void endGame() {
-        gameLoop.stop();
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText("Final Score: " + score);
-        alert.showAndWait();
-    }}
 
+
+
+}
