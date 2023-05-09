@@ -1,8 +1,11 @@
 package  com.example.javagame;
 import javafx.animation.AnimationTimer;
 import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
@@ -21,12 +24,14 @@ import java.util.Random;
 
 public class HelloApplication extends Application {
 
-    private static final int NUM_OBJECTS = 3;
+    private static final int NUM_OBJECTS = 5;
     private static final double WIDTH = 1000;
     private static final double HEIGHT = 650;
 
     private int score = 0;
     private int objectsClicked = 0;
+
+    private int objectsFell =0;
     private Text scoreText;
     private List<FallingObject> objects;
     private List<Text> texts;
@@ -41,10 +46,17 @@ public class HelloApplication extends Application {
         Pane root = new Pane();
         Scene scene = new Scene(root, WIDTH, HEIGHT);
 
-        scoreText = new Text("Score: "+score);
+        scoreText = new Text("Score: " + score);
+        scoreText.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        scoreText.setFill(Color.BLACK);
+        scoreText.setEffect(new DropShadow(10, Color.GRAY));
         scoreText.setLayoutX(10);
-        scoreText.setLayoutY(20);
+        scoreText.setLayoutY(30);
         root.getChildren().add(scoreText);
+
+
+
+
         Text valuesText = new Text("Object Values:\n\n"
                 + "Yellow: 3\n"
                 + "Green: 2\n"
@@ -52,6 +64,9 @@ public class HelloApplication extends Application {
                 + "Red: 4");
         valuesText.setLayoutX(WIDTH - 150);
         valuesText.setLayoutY(20);
+        valuesText.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        valuesText.setFill(Color.BLACK);
+        valuesText.setEffect(new DropShadow(10, Color.GRAY));
         root.getChildren().add(valuesText);
         objects = new ArrayList<>();
         texts = new ArrayList<>();
@@ -65,6 +80,7 @@ public class HelloApplication extends Application {
                     updateObjects(root);
                 }
                 else {
+
                     stop();
                 }
             }
@@ -79,7 +95,7 @@ public class HelloApplication extends Application {
     }
 
     private void spawnObjects(Pane root) {
-        if (random.nextDouble() < 0.01 * (1 + objectsClicked)) {
+        if (random.nextDouble() < 0.01 * (1 + objectsClicked ) && objectsFell <NUM_OBJECTS) {
             double radius = 10 + random.nextDouble() * 20;
             double x = radius + random.nextDouble() * (WIDTH - 2 * radius);
             double speed = 1 + 0.5 * objectsClicked;
@@ -112,6 +128,7 @@ public class HelloApplication extends Application {
 
             FallingObject object = new FallingObject(x, 0, z, radius, value, speed);
             object.setMaterial(material);
+            objectsFell++;
 
             object.setOnMouseClicked(event -> handleClick((FallingObject) event.getTarget(), root));
 
@@ -186,8 +203,43 @@ public class HelloApplication extends Application {
                     root.getChildren().remove(node);
                 }
 
+
+        }
+        if(objectsFell==NUM_OBJECTS && objects.isEmpty()){
+            gameOverAnimation(root);
+
+
         }
     }
+    private void gameOverAnimation(Pane root) {
+        Text gameOverText = new Text("GAME OVER");
+        gameOverText.setFill(Color.RED);
+        gameOverText.setFont(Font.font(40));
+
+        // Set the initial position of the text to the center of the screen
+        gameOverText.setLayoutX(WIDTH / 2 - gameOverText.getLayoutBounds().getWidth() / 2);
+        gameOverText.setLayoutY(HEIGHT / 2 - gameOverText.getLayoutBounds().getHeight() / 2);
+
+        // Add the text to the root pane
+        root.getChildren().add(gameOverText);
+
+        // Animate the text to grow and fade out
+        ScaleTransition scaleTransition = new ScaleTransition(Duration.seconds(1), gameOverText);
+        scaleTransition.setToX(2);
+        scaleTransition.setToY(2);
+
+        FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1), gameOverText);
+        fadeTransition.setToValue(0);
+
+        ParallelTransition parallelTransition = new ParallelTransition(scaleTransition, fadeTransition);
+        parallelTransition.setOnFinished(event -> {
+            root.getChildren().remove(gameOverText);
+
+        });
+
+        parallelTransition.play();
+    }
+
 
 
 
